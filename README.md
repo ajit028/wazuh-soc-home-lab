@@ -145,50 +145,6 @@ The simulated attacks were successfully mapped to the following MITRE ATT&CK tec
 
 ---
 
-# 📷 Screenshots
-
-## Wazuh Dashboard
-
-> *(Add Screenshot)*
-
----
-
-## Threat Hunting Dashboard
-
-> *(Add Screenshot)*
-
----
-
-## MITRE ATT&CK Dashboard
-
-> *(Add Screenshot)*
-
----
-
-## PowerShell Detection
-
-> *(Add Screenshot)*
-
----
-
-## Registry Persistence Detection
-
-> *(Add Screenshot)*
-
----
-
-## Windows Service Detection
-
-> *(Add Screenshot)*
-
----
-
-## RDP Detection
-
-> *(Add Screenshot)*
-
----
-
 # 📁 Repository Structure
 
 ```

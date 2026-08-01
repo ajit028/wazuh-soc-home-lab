@@ -1,0 +1,16 @@
+<Sysmon schemaversion="4.90">
+
+  <HashAlgorithms>SHA256</HashAlgorithms>
+
+  <EventFiltering>
+
+    <ProcessCreate onmatch="include">
+      <Image condition="contains">powershell.exe</Image>
+      <Image condition="contains">cmd.exe</Image>
+      <Image condition="contains">reg.exe</Image>
+      <Image condition="contains">sc.exe</Image>
+    </ProcessCreate>
+
+  </EventFiltering>
+
+</Sysmon>

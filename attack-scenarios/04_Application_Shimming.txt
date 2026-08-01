@@ -1,0 +1,43 @@
+=========================================
+Attack Scenario 04
+Application Shimming
+=========================================
+
+Objective
+---------
+Simulate an Application Shimming technique to evaluate Wazuh's ability to detect the installation of an Application Compatibility Database (Shim Database), a persistence mechanism commonly abused by attackers.
+
+MITRE ATT&CK
+------------
+Technique : T1546.011
+Tactic    : Persistence, Privilege Escalation
+
+Commands Executed
+-----------------
+
+sdbinst.exe test.sdb
+
+sdbinst.exe -u test.sdb
+
+Expected Detection
+------------------
+- Execution of sdbinst.exe
+- Application Compatibility Database installation
+- Sysmon Process Creation (Event ID 1)
+- Wazuh detection rule for Application Shimming
+- MITRE ATT&CK mapping (T1546.011)
+
+Result
+------
+The Application Shimming activity was successfully detected by Wazuh. The execution of sdbinst.exe generated process creation events that were collected by the Wazuh agent and forwarded to the manager. The generated alerts appeared in both the Threat Hunting dashboard and the MITRE ATT&CK dashboard.
+
+Status
+------
+SUCCESS
+
+Observations
+------------
+- Process execution was successfully logged by Sysmon.
+- Wazuh identified the use of sdbinst.exe as an Application Shimming technique.
+- The event was mapped to MITRE ATT&CK Technique T1546.011.
+- Application Shimming is frequently used by attackers to maintain persistence and execute malicious code while bypassing traditional security controls.

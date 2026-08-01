@@ -1,0 +1,39 @@
+=========================================
+Attack Scenario 01
+PowerShell Execution
+=========================================
+
+Objective
+---------
+Simulate PowerShell execution to verify Wazuh detection capabilities for suspicious PowerShell activity.
+
+MITRE ATT&CK
+------------
+Technique : T1059.001
+Tactic    : Execution
+
+Commands Executed
+-----------------
+
+powershell.exe
+
+Get-Process
+
+Get-Service
+
+Get-ChildItem C:\Users
+
+Expected Detection
+------------------
+- PowerShell process creation
+- Sysmon Event ID 1
+- Wazuh PowerShell detection rule
+- MITRE ATT&CK mapping (T1059.001)
+
+Result
+------
+The PowerShell execution was successfully detected by the Wazuh agent and visualized in the Threat Hunting dashboard and MITRE ATT&CK dashboard.
+
+Status
+------
+SUCCESS

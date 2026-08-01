@@ -1,0 +1,47 @@
+=========================================
+Attack Scenario 02
+Account Discovery
+=========================================
+
+Objective
+---------
+Simulate account enumeration activities commonly performed by attackers after gaining initial access. This test validates Wazuh's ability to detect user and group discovery commands.
+
+MITRE ATT&CK
+------------
+Technique : T1087
+Tactic    : Discovery
+
+Commands Executed
+-----------------
+
+whoami
+
+net user
+
+net localgroup administrators
+
+query user
+
+Expected Detection
+------------------
+- User account enumeration
+- Local group enumeration
+- Windows Security Event logging
+- Wazuh detection rules
+- MITRE ATT&CK mapping (T1087)
+
+Result
+------
+The account discovery commands were successfully executed on the Windows endpoint. Wazuh collected the generated events, correlated them with detection rules, and displayed the activity in both the Threat Hunting and MITRE ATT&CK dashboards.
+
+Status
+------
+SUCCESS
+
+Observations
+------------
+- Enumeration activity was recorded by the Wazuh agent.
+- Detection events appeared in the Threat Hunting dashboard.
+- The activity was mapped to the MITRE ATT&CK Discovery tactic.
+- Security analysts can use these alerts to identify potential reconnaissance behavior following initial system compromise.

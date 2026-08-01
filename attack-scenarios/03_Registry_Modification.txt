@@ -1,0 +1,45 @@
+=========================================
+Attack Scenario 03
+Registry Modification
+=========================================
+
+Objective
+---------
+Simulate Windows Registry modification to evaluate Wazuh's capability to detect unauthorized changes that may be used by attackers to establish persistence or alter system behavior.
+
+MITRE ATT&CK
+------------
+Technique : T1112
+Tactic    : Defense Evasion, Persistence
+
+Commands Executed
+-----------------
+
+reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v DemoApp /t REG_SZ /d "C:\Windows\System32\notepad.exe" /f
+
+reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+
+reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v DemoApp /f
+
+Expected Detection
+------------------
+- Registry value creation
+- Registry value deletion
+- Sysmon Registry Event (Event ID 13)
+- Wazuh registry monitoring rules
+- MITRE ATT&CK mapping (T1112)
+
+Result
+------
+The registry modification activity was successfully detected by the Wazuh agent. Sysmon generated registry change events, which were forwarded to the Wazuh Manager for analysis. The alerts were visible in both the Threat Hunting dashboard and the MITRE ATT&CK dashboard.
+
+Status
+------
+SUCCESS
+
+Observations
+------------
+- Registry changes were captured in real time.
+- Wazuh correlated the events with predefined detection rules.
+- The activity was mapped to the MITRE ATT&CK Defense Evasion and Persistence tactics.
+- Registry monitoring enables early detection of persistence mechanisms commonly used by malware and advanced attackers.

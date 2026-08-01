@@ -1,0 +1,8 @@
+<group name="custom_rules">
+
+  <rule id="100100" level="10">
+    <if_group>sysmon_event1</if_group>
+    <description>Sample PowerShell Detection</description>
+  </rule>
+
+</group>

@@ -1,0 +1,47 @@
+=========================================
+Attack Scenario 05
+Windows Service Creation
+=========================================
+
+Objective
+---------
+Simulate the creation of a Windows service to evaluate Wazuh's ability to detect service-based persistence techniques commonly used by attackers.
+
+MITRE ATT&CK
+------------
+Technique : T1543.003
+Tactic    : Persistence, Privilege Escalation
+
+Commands Executed
+-----------------
+
+sc create DemoService binPath= "C:\Windows\System32\cmd.exe"
+
+sc start DemoService
+
+sc stop DemoService
+
+sc delete DemoService
+
+Expected Detection
+------------------
+- Windows service creation
+- Windows service start and stop events
+- Sysmon Service Creation events
+- Wazuh detection rules
+- MITRE ATT&CK mapping (T1543.003)
+
+Result
+------
+The Windows service creation activity was successfully detected by the Wazuh SIEM platform. Sysmon recorded the service creation event, and the Wazuh Agent forwarded the logs to the Wazuh Manager. The generated alerts appeared in the Threat Hunting dashboard and were mapped to the MITRE ATT&CK framework.
+
+Status
+------
+SUCCESS
+
+Observations
+------------
+- Service creation was successfully logged.
+- Wazuh generated alerts for the newly created service.
+- The activity was mapped to MITRE ATT&CK Technique T1543.003 (Create or Modify System Process: Windows Service).
+- Monitoring service creation events helps identify persistence mechanisms and unauthorized software installation attempts used by attackers.

@@ -1,0 +1,58 @@
+=========================================
+Attack Scenario 06
+RDP Lateral Movement
+=========================================
+
+Objective
+---------
+Simulate Remote Desktop Protocol (RDP) access from a Kali Linux attacker machine to the Windows 11 endpoint and verify that Wazuh detects and records remote logon activity.
+
+MITRE ATT&CK
+------------
+Technique : T1021.001
+Tactic    : Lateral Movement
+
+Environment
+-----------
+Source Machine      : Kali Linux
+Target Machine      : Windows 11
+Protocol            : Remote Desktop Protocol (RDP)
+Client              : xfreerdp
+
+Command Executed
+----------------
+
+xfreerdp /v:<Windows_IP_Address> /u:<Username> /p:<Password>
+
+Example
+
+xfreerdp /v:192.168.15.129 /u:Administrator /p:Password123
+
+Expected Detection
+------------------
+- Successful RDP authentication
+- Windows Logon Events
+- Remote Interactive Logon
+- Security Event Logs
+- Wazuh authentication detection rules
+- MITRE ATT&CK mapping (T1021.001)
+
+Result
+------
+The Remote Desktop connection from Kali Linux to the Windows endpoint was successfully established. Windows generated authentication and logon events, which were collected by the Wazuh Agent and forwarded to the Wazuh Manager. The corresponding alerts were displayed in the Threat Hunting dashboard and mapped to the MITRE ATT&CK framework.
+
+Status
+------
+SUCCESS
+
+Observations
+------------
+- Remote logon activity was successfully detected.
+- Wazuh generated authentication-related alerts.
+- The activity was mapped to MITRE ATT&CK Technique T1021.001 (Remote Services: Remote Desktop Protocol).
+- Authentication logs, source IP address, username, and logon details were available for investigation.
+- This scenario demonstrates how Wazuh can assist SOC analysts in identifying lateral movement attempts within an enterprise environment.
+
+Conclusion
+----------
+The RDP lateral movement simulation successfully validated Wazuh's capability to detect and investigate remote access events. Monitoring Remote Desktop activity is essential for identifying unauthorized access attempts and supporting incident response activities in Security Operations Centers (SOCs).

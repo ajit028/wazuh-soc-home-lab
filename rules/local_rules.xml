@@ -1,0 +1,265 @@
+<!--
+  Wazuh SIEM & XDR - Custom Detection Rules
+  Author: Ajit Nayak (SOC Analyst / Threat Detection Engineer)
+  Repository: wazuh-soc-home-lab
+  File: rules/local_rules.xml
+  Description: Custom enterprise rules mapped to MITRE ATT&CK for detecting Credential Dumping, LOLBAS, Process Anomalies, and Brute-Force Spikes.
+-->
+
+<group name="windows,sysmon,mimikatz,lolbas,bruteforce,custom_security,">
+
+  <!-- ===================================================================== -->
+  <!-- 1. CREDENTIAL DUMPING & MEMORY HARVESTING (MITRE T1003)              -->
+  <!-- ===================================================================== -->
+
+  <!-- Mimikatz Command-Line & In-Memory Artifacts -->
+  <rule id="100010" level="14">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(sekurlsa::|logonpasswords|lsadump::|kerberos::ptt|privilege::debug|token::elevate|crypto::certificates|dpapi::chrome|mimikatz|mimi\.exe)</field>
+    <description>Critical Threat: Mimikatz Execution / Credential Harvesting Detected on $(win.system.computer)</description>
+    <mitre>
+      <id>T1003.001</id>
+      <id>T1003</id>
+      <id>T1059.001</id>
+    </mitre>
+    <info type="cve">CWE-250</info>
+    <info type="link">https://attack.mitre.org/techniques/T1003/001/</info>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- LSASS Dumping via ProcDump or comsvcs.dll MiniDump -->
+  <rule id="100011" level="13">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(procdump(\.exe)?\s+(-ma\s+)?lsass|rundll32(\.exe)?\s+.*comsvcs(\.dll)?\s*,?#?24\s+\d+\s+.*\.dmp|MiniDump|lsass\.dmp|ntdsutil.*ac\s+i\s+ntds.*ifm)</field>
+    <description>High Threat: Direct Memory Dump of LSASS / Active Directory Database Detected</description>
+    <mitre>
+      <id>T1003.001</id>
+      <id>T1003.003</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Sysmon Event ID 10: LSASS Suspicious Process Access -->
+  <rule id="100012" level="12">
+    <if_sid>61609</if_sid>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i).*\\lsass\.exe$</field>
+    <field name="win.eventdata.grantedAccess" type="pcre2">(?i)(0x1010|0x1410|0x1FFFFF|0x1438|0x143A)</field>
+    <description>Suspicious Access Rights Requested to LSASS.exe by $(win.eventdata.sourceImage)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Registry Hive Dumping (SAM, SYSTEM, SECURITY) -->
+  <rule id="100013" level="12">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)reg(\.exe)?\s+(save|export)\s+hklm\\(sam|system|security)\s+</field>
+    <description>High Threat: Local Registry Credential Hives Dumped via reg.exe</description>
+    <mitre>
+      <id>T1003.002</id>
+      <id>T1012</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- ===================================================================== -->
+  <!-- 2. LOLBAS & PROCESS CREATION ANOMALIES (MITRE T1059, T1105, T1218)     -->
+  <!-- ===================================================================== -->
+
+  <!-- Suspicious Certutil Ingress Tool Transfer / Base64 Decode -->
+  <rule id="100020" level="12">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\certutil\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-urlcache\s+-(split\s+)?-f\s+http|-decode\s+|-encode\s+)</field>
+    <description>LOLBAS Detected: Certutil.exe Used for Remote Download or Base64 Payload Decoding</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1140</id>
+      <id>T1059</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- BITSAdmin Suspicious Transfer Job -->
+  <rule id="100021" level="11">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\bitsadmin\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\/transfer\s+|\/create\s+|\/addfile\s+.*http)</field>
+    <description>LOLBAS Detected: BITSAdmin Used to Stage Remote Payload Transfer</description>
+    <mitre>
+      <id>T1197</id>
+      <id>T1105</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- MSHTA Malicious Inline Script / Remote HTA Execution -->
+  <rule id="100022" level="13">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\mshta\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(javascript:|vbscript:|http:\/\/|https:\/\/|about:)</field>
+    <description>LOLBAS Detected: MSHTA Executing Inline Script or Staged Remote HTA File</description>
+    <mitre>
+      <id>T1218.005</id>
+      <id>T1059.005</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Rundll32 Suspicious Scripting Protocol or Unmanaged Execution -->
+  <rule id="100023" level="12">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\rundll32\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(javascript:|vbscript:|url\.dll\s*,?FileProtocolHandler\s+http|AppData\\|Temp\\)</field>
+    <description>LOLBAS Detected: Rundll32 Executing Suspicious Script Handler or Temp DLL</description>
+    <mitre>
+      <id>T1218.011</id>
+      <id>T1059</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Obfuscated / Encoded PowerShell Execution -->
+  <rule id="100024" level="12">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-[eE](?:nc(?:odedcommand)?)?\s+[A-Za-z0-9+/=]{10,}|-nop(?:rofile)?\s+-w(?:indowstyle)?\s+hidden|-ep\s+bypass|DownloadString\s*\(\s*['"]http|iex\s*\(|Invoke-Expression|System\.Net\.WebClient)</field>
+    <description>Suspicious Obfuscated PowerShell / Web Download Cradle Executed</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1027</id>
+      <id>T1105</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- WMIC Remote Process Call / Lateral Invocation -->
+  <rule id="100025" level="11">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\wmic\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(process\s+call\s+create|\/node:.*process\s+call|shadowcopy\s+delete)</field>
+    <description>WMIC Invocation: Process Call Create / Remote Node Execution Detected</description>
+    <mitre>
+      <id>T1047</id>
+      <id>T1021.006</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Regsvr32 Squiblydoo / Scriptlet Proxy Execution -->
+  <rule id="100026" level="13">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i).*\\regsvr32\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(/s\s+/n\s+/u\s+/i:http|/i:http.*scrobj\.dll|scrobj\.dll)</field>
+    <description>Defense Evasion: Regsvr32 Squiblydoo Remote Scriptlet Execution (T1218.010)</description>
+    <mitre>
+      <id>T1218.010</id>
+      <id>T1059</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Shadow Copy Deletion (Ransomware / Evasion) -->
+  <rule id="100027" level="14">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(vssadmin(\.exe)?\s+delete\s+shadows|wbadmin(\.exe)?\s+delete\s+catalog|bcdedit(\.exe)?\s+\/set\s+.*recoveryenabled\s+no|bcdedit(\.exe)?\s+\/set\s+.*bootstatuspolicy\s+ignoreallfailures)</field>
+    <description>Critical Threat: Volume Shadow Copy / System Recovery Backup Deletion Detected</description>
+    <mitre>
+      <id>T1490</id>
+      <id>T1070</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Rapid Discovery and Reconnaissance Activity -->
+  <rule id="100028" level="8">
+    <if_group>sysmon_process_creation|windows_process_creation</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(whoami\s+\/(all|priv|groups)|net\s+(localgroup\s+administrators|group\s+"domain\s+admins"|user\s+\/domain)|nltest\s+\/dclist:|dsquery\s+user|quser|qwinsta|systeminfo\s*\||route\s+print)</field>
+    <description>Suspicious Endpoint Discovery &amp; Privilege Enumeration Command Executed</description>
+    <mitre>
+      <id>T1087.001</id>
+      <id>T1087.002</id>
+      <id>T1082</id>
+      <id>T1016</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- ===================================================================== -->
+  <!-- 3. AUTHENTICATION ANOMALIES & BRUTE FORCE SPIKES (MITRE T1110)        -->
+  <!-- ===================================================================== -->
+
+  <!-- SSH Multiple Failed Logins Threshold (Spike Detection) -->
+  <rule id="100030" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_srcip />
+    <description>Brute Force Spike: 5+ SSH Authentication Failures in 60s from $(srcip)</description>
+    <mitre>
+      <id>T1110.001</id>
+      <id>T1110.003</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- SSH Successful Login Following Brute Force Attack -->
+  <rule id="100031" level="14">
+    <if_sid>5715</if_sid>
+    <if_matched_sid>100030</if_matched_sid>
+    <same_srcip />
+    <description>CRITICAL: Successful SSH Authentication Following Brute Force Burst from $(srcip)</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+  <!-- Windows RDP / Logon Failure Spike (Event ID 4625) -->
+  <rule id="100032" level="10" frequency="5" timeframe="60">
+    <if_sid>60122</if_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Brute Force Spike: 5+ Windows Logon Failures (Event 4625) in 60s from IP $(win.eventdata.ipAddress)</description>
+    <mitre>
+      <id>T1110.001</id>
+      <id>T1021.001</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Windows Successful RDP Login Following Logon Burst -->
+  <rule id="100033" level="14">
+    <if_sid>60106</if_sid>
+    <if_matched_sid>100032</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>CRITICAL: Successful Windows RDP / Interactive Logon Following Brute Force Attack from $(win.eventdata.ipAddress)</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078.002</id>
+      <id>T1021.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Custom Web App / Gateway Auth Brute Force Spike -->
+  <rule id="100034" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>100101</if_matched_sid>
+    <same_srcip />
+    <description>Web Application Threat: Multiple Authentication Failures (5+ in 60s) from $(srcip)</description>
+    <mitre>
+      <id>T1110.001</id>
+      <id>T1110.004</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Custom Security Gateway Web Attack (SQLi / RCE / Path Traversal) -->
+  <rule id="100035" level="12">
+    <if_sid>100201</if_sid>
+    <match>BLOCKED</match>
+    <description>Security Gateway Threat: Malicious Web Payload Blocked from $(srcip) on $(url)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059</id>
+    </mitre>
+  </rule>
+
+</group>

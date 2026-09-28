@@ -1,0 +1,48 @@
+<!--
+  Wazuh SIEM & XDR - Custom Decoders
+  Author: Ajit Nayak (SOC Analyst / Threat Detection Engineer)
+  Repository: wazuh-soc-home-lab
+  File: decoders/local_decoders.xml
+  Description: Custom decoders for parsing Application Authentication Logs, API Gateway security events, and Internal EDR feeds.
+-->
+
+<!-- Parent Decoder: Custom Authentication Gateway Logs -->
+<decoder name="auth_gateway">
+  <prematch>^\[AUTH_GATEWAY\]</prematch>
+</decoder>
+
+<decoder name="auth_gateway_fields">
+  <parent>auth_gateway</parent>
+  <regex offset="after_parent">^\s*(\S+)\s+status=(\S+)\s+user=(\S+)\s+src_ip=(\S+)\s+method=(\S+)\s+url=(\S+)\s+reason="([^"]*)"</regex>
+  <order>timestamp, status, dstuser, srcip, protocol, url, extra_data</order>
+</decoder>
+
+<decoder name="auth_gateway_fields_alt">
+  <parent>auth_gateway</parent>
+  <regex offset="after_parent">status=(\S+)\s+user=(\S+)\s+src_ip=(\S+)</regex>
+  <order>status, dstuser, srcip</order>
+</decoder>
+
+
+<!-- Parent Decoder: Custom Security Gateway / Web Application Firewall Logs -->
+<decoder name="sec_gateway">
+  <prematch>^\[SEC_GATEWAY\]</prematch>
+</decoder>
+
+<decoder name="sec_gateway_fields">
+  <parent>sec_gateway</parent>
+  <regex offset="after_parent">client_ip=(\S+)\s+action=(\S+)\s+rule=(\S+)\s+payload="([^"]*)"\s+user=(\S+)\s+uri=(\S+)\s+status=(\d+)</regex>
+  <order>srcip, action, id, extra_data, dstuser, url, status</order>
+</decoder>
+
+
+<!-- Parent Decoder: Custom Endpoint Agent / Threat Feed Logs -->
+<decoder name="edr_feed">
+  <prematch>^\[EDR_AGENT\]</prematch>
+</decoder>
+
+<decoder name="edr_feed_fields">
+  <parent>edr_feed</parent>
+  <regex offset="after_parent">host=(\S+)\s+agent_id=(\S+)\s+event=(\S+)\s+target_pid=(\d+)\s+source_proc=(\S+)\s+severity=(\S+)</regex>
+  <order>system_name, id, action, dstport, program_name, status</order>
+</decoder>

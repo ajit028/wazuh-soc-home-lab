@@ -1,0 +1,224 @@
+<!--
+  Sysmon Enterprise Configuration - Mapped to MITRE ATT&CK Framework
+  Author: Ajit Nayak (SOC Analyst / Threat Detection Engineer)
+  Repository: wazuh-soc-home-lab
+  File: configs/sysmonconfig-export.xml
+  SchemaVersion: 4.90
+  Description: Optimized Sysmon XML configuration for Windows endpoint threat hunting,
+               LSASS protection, LOLBAS detection, and Wazuh SIEM telemetry ingestion.
+-->
+
+<Sysmon schemaversion="4.90">
+  <!-- Global Hash Configuration: MD5, SHA256, IMPHASH for threat intelligence matching -->
+  <HashAlgorithms>MD5,SHA256,IMPHASH</HashAlgorithms>
+  <CheckRevocation />
+
+  <EventFiltering>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 1: PROCESS CREATION (MITRE ATT&CK: Execution, Defense Evasion)-->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Process Creation - Threat Detections" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <!-- T1059: Command and Scripting Interpreter -->
+        <Image condition="image">cmd.exe</Image>
+        <Image condition="image">powershell.exe</Image>
+        <Image condition="image">pwsh.exe</Image>
+        <Image condition="image">wscript.exe</Image>
+        <Image condition="image">cscript.exe</Image>
+        <Image condition="image">mshta.exe</Image>
+        <Image condition="image">wmic.exe</Image>
+
+        <!-- T1218: Signed Binary Proxy Execution (LOLBAS) -->
+        <Image condition="image">certutil.exe</Image>
+        <Image condition="image">bitsadmin.exe</Image>
+        <Image condition="image">rundll32.exe</Image>
+        <Image condition="image">regsvr32.exe</Image>
+        <Image condition="image">msiexec.exe</Image>
+        <Image condition="image">installutil.exe</Image>
+        <Image condition="image">regasm.exe</Image>
+        <Image condition="image">regsvcs.exe</Image>
+        <Image condition="image">cmstp.exe</Image>
+        <Image condition="image">msbuild.exe</Image>
+        <Image condition="image">hh.exe</Image>
+
+        <!-- T1003: OS Credential Dumping Tools -->
+        <Image condition="image">mimikatz.exe</Image>
+        <Image condition="image">procdump.exe</Image>
+        <Image condition="image">procdump64.exe</Image>
+        <Image condition="image">gsecdump.exe</Image>
+        <Image condition="image">pwdump.exe</Image>
+
+        <!-- T1087 / T1082: Discovery Tools -->
+        <Image condition="image">whoami.exe</Image>
+        <Image condition="image">net.exe</Image>
+        <Image condition="image">net1.exe</Image>
+        <Image condition="image">nltest.exe</Image>
+        <Image condition="image">systeminfo.exe</Image>
+        <Image condition="image">quser.exe</Image>
+        <Image condition="image">ipconfig.exe</Image>
+        <Image condition="image">nslookup.exe</Image>
+
+        <!-- T1547 / T1543: Persistence Utilities -->
+        <Image condition="image">schtasks.exe</Image>
+        <Image condition="image">sc.exe</Image>
+        <Image condition="image">reg.exe</Image>
+        <Image condition="image">vssadmin.exe</Image>
+        <Image condition="image">wbadmin.exe</Image>
+        <Image condition="image">bcdedit.exe</Image>
+
+        <!-- Execution from suspicious locations -->
+        <Image condition="begin with">C:\Users\Public\</Image>
+        <Image condition="begin with">C:\Windows\Temp\</Image>
+        <Image condition="contains">\AppData\Local\Temp\</Image>
+        <Image condition="contains">\AppData\Roaming\</Image>
+
+        <!-- Suspicious Command Line Patterns -->
+        <CommandLine condition="contains">-enc</CommandLine>
+        <CommandLine condition="contains">-EncodedCommand</CommandLine>
+        <CommandLine condition="contains">bypass</CommandLine>
+        <CommandLine condition="contains">hidden</CommandLine>
+        <CommandLine condition="contains">DownloadString</CommandLine>
+        <CommandLine condition="contains">Invoke-Expression</CommandLine>
+        <CommandLine condition="contains">-urlcache</CommandLine>
+        <CommandLine condition="contains">delete shadows</CommandLine>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <ProcessCreate onmatch="exclude">
+      <IntegrityLevel condition="is">AppContainer</IntegrityLevel>
+    </ProcessCreate>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 2: FILE CREATION TIME CHANGED (MITRE ATT&CK: Timestomping T1070)-->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Timestomping Monitoring" groupRelation="or">
+      <FileCreateTime onmatch="include">
+        <Image condition="not begin with">C:\Windows\System32\</Image>
+      </FileCreateTime>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 3: NETWORK CONNECTION (MITRE ATT&CK: C2 & Exfiltration T1071) -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Suspicious Outbound Network Telemetry" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- Suspicious binaries initiating network connections -->
+        <Image condition="image">cmd.exe</Image>
+        <Image condition="image">powershell.exe</Image>
+        <Image condition="image">pwsh.exe</Image>
+        <Image condition="image">rundll32.exe</Image>
+        <Image condition="image">regsvr32.exe</Image>
+        <Image condition="image">mshta.exe</Image>
+        <Image condition="image">certutil.exe</Image>
+        <Image condition="image">bitsadmin.exe</Image>
+        <Image condition="image">wscript.exe</Image>
+        <Image condition="image">cscript.exe</Image>
+        <Image condition="image">wmic.exe</Image>
+        <Image condition="image">schtasks.exe</Image>
+
+        <!-- Remote Management & Suspicious Ports -->
+        <DestinationPort condition="is">22</DestinationPort>     <!-- SSH -->
+        <DestinationPort condition="is">23</DestinationPort>     <!-- Telnet -->
+        <DestinationPort condition="is">3389</DestinationPort>   <!-- RDP -->
+        <DestinationPort condition="is">4444</DestinationPort>   <!-- Metasploit Default -->
+        <DestinationPort condition="is">8080</DestinationPort>   <!-- HTTP Alt / Proxy -->
+        <DestinationPort condition="is">1337</DestinationPort>   <!-- C2 Port -->
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 7: IMAGE / DLL LOADED (MITRE ATT&CK: DLL Sideloading T1574)   -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="DLL Side-Loading and Injection" groupRelation="or">
+      <ImageLoad onmatch="include">
+        <ImageLoaded condition="contains">\AppData\Local\Temp\</ImageLoaded>
+        <ImageLoaded condition="begin with">C:\Users\Public\</ImageLoaded>
+        <ImageLoaded condition="image">samlib.dll</ImageLoaded>
+        <ImageLoaded condition="image">vaultcli.dll</ImageLoaded>
+        <ImageLoaded condition="image">wlanapi.dll</ImageLoaded>
+      </ImageLoad>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 8: CREATEREMOTETHREAD (MITRE ATT&CK: Process Injection T1055) -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Process Injection Monitoring" groupRelation="or">
+      <CreateRemoteThread onmatch="include">
+        <TargetImage condition="image">lsass.exe</TargetImage>
+        <TargetImage condition="image">svchost.exe</TargetImage>
+        <TargetImage condition="image">spoolsv.exe</TargetImage>
+        <TargetImage condition="image">explorer.exe</TargetImage>
+      </CreateRemoteThread>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 10: PROCESS ACCESS (MITRE ATT&CK: Credential Dumping T1003)   -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="LSASS and Sensitive Process Access" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <!-- Monitor all attempts to open LSASS process memory -->
+        <TargetImage condition="image">lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <ProcessAccess onmatch="exclude">
+      <SourceImage condition="is">C:\Windows\System32\svchost.exe</SourceImage>
+      <SourceImage condition="is">C:\Windows\System32\csrss.exe</SourceImage>
+      <SourceImage condition="is">C:\Program Files\Windows Defender\MsMpEng.exe</SourceImage>
+    </ProcessAccess>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 11: FILE CREATE (MITRE ATT&CK: Ingress Tool Transfer T1105)   -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Suspicious File Creation" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="begin with">C:\Windows\Temp\</TargetFilename>
+        <TargetFilename condition="begin with">C:\Users\Public\</TargetFilename>
+        <TargetFilename condition="contains">\Start Menu\Programs\Startup\</TargetFilename>
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.dll</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+        <TargetFilename condition="end with">.vbs</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+        <TargetFilename condition="end with">.hta</TargetFilename>
+        <TargetFilename condition="end with">.dmp</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 12/13/14: REGISTRY EVENTS (MITRE ATT&CK: Persistence T1547)  -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="Registry Persistence and Modification" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <!-- Run & RunOnce Keys -->
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\RunOnce</TargetObject>
+        <!-- Windows Services -->
+        <TargetObject condition="contains">\System\CurrentControlSet\Services\</TargetObject>
+        <!-- Security Providers / LSA Packages -->
+        <TargetObject condition="contains">\Control\Lsa\</TargetObject>
+        <TargetObject condition="contains">\Control\SecurityProviders\</TargetObject>
+        <!-- Image File Execution Options (IFEO) Persistence -->
+        <TargetObject condition="contains">\Image File Execution Options\</TargetObject>
+        <!-- Defender Tampering -->
+        <TargetObject condition="contains">\Windows Defender\Exclusions\</TargetObject>
+        <TargetObject condition="contains">\Windows Defender\Real-Time Protection\</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- ===================================================================== -->
+    <!-- EVENT ID 22: DNS QUERY (MITRE ATT&CK: C2 & Data Exfiltration T1071)   -->
+    <!-- ===================================================================== -->
+    <RuleGroup name="DNS Telemetry Monitoring" groupRelation="or">
+      <DnsQuery onmatch="include">
+        <Image condition="image">powershell.exe</Image>
+        <Image condition="image">cmd.exe</Image>
+        <Image condition="image">mshta.exe</Image>
+        <Image condition="image">certutil.exe</Image>
+        <Image condition="image">rundll32.exe</Image>
+      </DnsQuery>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>
